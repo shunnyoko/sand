@@ -3,54 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Grassland Dust Animation</title>
+    <title>Black Background Dust Animation</title>
     <style>
-        /* --- CSS: レイアウト設定 --- */
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: #000;
+        body, html { 
+            margin: 0; 
+            padding: 0; 
+            width: 100%; 
+            height: 100%; 
+            overflow: hidden; 
+            /* 背景を真っ黒に固定 */
+            background-color: #000; 
         }
-
         .wrapper {
             position: relative;
             width: 100vw;
             height: 100vh;
-            /* 背景画像を絶対パスで指定 */
-            background-image: url('https://r.jina.ai/i/de2164e2621448b495204439f0412803');
-            background-size: cover;
-            background-position: center;
+            /* 画像を削除し、背景色を黒に徹底 */
+            background: #000;
         }
-
-        canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            /* 砂煙がマウス操作の邪魔にならないように設定 */
-            pointer-events: none;
+        canvas { 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            pointer-events: none; 
         }
     </style>
 </head>
 <body>
-
     <div class="wrapper">
         <canvas id="dustCanvas"></canvas>
     </div>
 
 <script>
-/**
- * --- JS: 砂煙（パーティクル）のアニメーション制御 ---
- */
 const canvas = document.getElementById('dustCanvas');
 const ctx = canvas.getContext('2d');
 
-let particles = [];
-const particleCount = 150; // 砂煙の密度
-
-// 画面のリサイズに対応
 function resize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
@@ -58,55 +45,58 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-class DustParticle {
+class DustCloud {
     constructor() {
         this.init();
     }
 
     init() {
-        // 出現位置: 画面下部（草むらのあたり）から発生
+        // 発生源を画面下部に
         this.x = Math.random() * canvas.width;
-        this.y = canvas.height * (0.5 + Math.random() * 0.5);
+        this.y = canvas.height * 0.9;
         
-        // 粒子のサイズ（ぼかしを強くするため大きめに）
-        this.size = Math.random() * 50 + 20;
+        // サイズを大幅に大きく（ポンポン感を出す）
+        this.size = Math.random() * 80 + 100;
         
-        // 移動速度: 右上に風が吹いているイメージ
-        this.vx = Math.random() * 2 + 0.5;
-        this.vy = -(Math.random() * 1.5 + 0.2);
+        // 吹き出す速度
+        this.vx = (Math.random() - 0.5) * 3;
+        this.vy = -(Math.random() * 4 + 2);
         
-        // 透明度と寿命
         this.alpha = 0;
-        this.maxAlpha = Math.random() * 0.2 + 0.05;
+        this.maxAlpha = Math.random() * 0.5 + 0.2; // 黒背景なので少し明るめに
         this.life = 0;
-        this.maxLife = Math.random() * 400 + 200;
+        this.maxLife = Math.random() * 120 + 80;
+        this.expand = Math.random() * 2 + 1; // どんどん広がる
     }
 
     update() {
         this.x += this.vx;
         this.y += this.vy;
+        this.size += this.expand;
+        this.vy += 0.03; // わずかな減速
         this.life++;
 
-        // フェードイン・アウトの計算
-        if (this.life < 100) {
-            this.alpha = (this.life / 100) * this.maxAlpha;
-        } else if (this.life > this.maxLife - 100) {
-            this.alpha = ((this.maxLife - this.life) / 100) * this.maxAlpha;
+        // フェードイン・アウト
+        if (this.life < 20) {
+            this.alpha = (this.life / 20) * this.maxAlpha;
+        } else {
+            this.alpha = Math.max(0, this.maxAlpha * (1 - this.life / this.maxLife));
         }
 
-        // 画面外に出るか寿命が来たらリセット
-        if (this.life >= this.maxLife || this.x > canvas.width || this.y < 0) {
+        if (this.life >= this.maxLife) {
             this.init();
         }
     }
 
     draw() {
+        if (this.alpha <= 0) return;
         ctx.beginPath();
-        // グラデーションで柔らかい煙の質感を出す
         const grd = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size);
-        // 砂の色（ベージュ系）
-        grd.addColorStop(0, `rgba(210, 180, 140, ${this.alpha})`);
-        grd.addColorStop(1, 'rgba(210, 180, 140, 0)');
+        
+        // 黒背景に映える砂の色
+        grd.addColorStop(0, `rgba(220, 200, 170, ${this.alpha})`);
+        grd.addColorStop(0.4, `rgba(200, 180, 150, ${this.alpha * 0.6})`);
+        grd.addColorStop(1, 'rgba(0, 0, 0, 0)');
         
         ctx.fillStyle = grd;
         ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
@@ -114,25 +104,28 @@ class DustParticle {
     }
 }
 
-// 初期化
-function createParticles() {
-    for (let i = 0; i < particleCount; i++) {
-        particles.push(new DustParticle());
-    }
+const clouds = [];
+const cloudCount = 45; // 密度を少しアップ
+
+for (let i = 0; i < cloudCount; i++) {
+    setTimeout(() => {
+        clouds.push(new DustCloud());
+    }, i * 150); // 150msおきにポン、ポンと発生
 }
 
-// ループ処理
 function animate() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    particles.forEach(p => {
-        p.update();
-        p.draw();
+    // 煙が重なった時に明るくなる設定（より立体感が出ます）
+    ctx.globalCompositeOperation = 'screen'; 
+    
+    clouds.forEach(c => {
+        c.update();
+        c.draw();
     });
     requestAnimationFrame(animate);
 }
 
-createParticles();
 animate();
 </script>
 </body>
